@@ -1,7 +1,6 @@
 package com.github.quiltservertools.ledger.actions
 
 import com.github.quiltservertools.ledger.actionutils.Preview
-import com.github.quiltservertools.ledger.utility.NbtUtils
 import com.github.quiltservertools.ledger.utility.TextColorPallet
 import com.github.quiltservertools.ledger.utility.getOtherChestSide
 import com.github.quiltservertools.ledger.utility.getWorld
@@ -17,8 +16,10 @@ import net.minecraft.item.AliasedBlockItem
 import net.minecraft.item.BlockItem
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
+import net.minecraft.nbt.StringNbtReader
 import net.minecraft.registry.Registries
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.HoverEvent
@@ -36,8 +37,8 @@ abstract class ItemChangeActionType : AbstractActionType() {
         }
     }
 
-    override fun getObjectMessage(): Text {
-        val stack = NbtUtils.itemFromProperties(extraData, objectIdentifier)
+    override fun getObjectMessage(source: ServerCommandSource): Text {
+        val stack = ItemStack.fromNbtOrEmpty(source.registryManager, StringNbtReader.parse(extraData))
 
         return "${stack.count} ".literal().append(
             Text.translatable(
@@ -63,17 +64,17 @@ abstract class ItemChangeActionType : AbstractActionType() {
             if (it) {
                 val otherPos = getOtherChestSide(state, pos)
                 if (otherPos != null) {
-                    addPreview(preview, otherPos, insert)
+                    addPreview(preview, player, otherPos, insert)
                 }
             }
         }
-        addPreview(preview, pos, insert)
+        addPreview(preview, player, pos, insert)
     }
 
-    private fun addPreview(preview: Preview, pos: BlockPos, insert: Boolean) {
+    private fun addPreview(preview: Preview, player: ServerPlayerEntity, pos: BlockPos, insert: Boolean) {
         preview.modifiedItems.compute(pos) { _, list ->
             list ?: mutableListOf()
-        }?.add(Pair(NbtUtils.itemFromProperties(extraData, objectIdentifier), insert))
+        }?.add(Pair(ItemStack.fromNbtOrEmpty(player.server.registryManager, StringNbtReader.parse(extraData)), insert))
     }
 
     private fun getInventory(world: ServerWorld): Inventory? {
@@ -99,8 +100,8 @@ abstract class ItemChangeActionType : AbstractActionType() {
         val world = server.getWorld(world)
         val inventory = world?.let { getInventory(it) }
 
-        if (world != null) {
-            val rollbackStack = NbtUtils.itemFromProperties(extraData, objectIdentifier)
+        if (world != null && inventory != null) {
+            val rollbackStack = ItemStack.fromNbtOrEmpty(server.registryManager, StringNbtReader.parse(extraData))
 
             if (inventory != null) {
                 for (i in 0 until inventory.size()) {
@@ -128,7 +129,7 @@ abstract class ItemChangeActionType : AbstractActionType() {
         val inventory = world?.let { getInventory(it) }
 
         if (world != null) {
-            val rollbackStack = NbtUtils.itemFromProperties(extraData, objectIdentifier)
+            val rollbackStack = ItemStack.fromNbtOrEmpty(server.registryManager, StringNbtReader.parse(extraData))
 
             if (inventory != null) {
                 for (i in 0 until inventory.size()) {

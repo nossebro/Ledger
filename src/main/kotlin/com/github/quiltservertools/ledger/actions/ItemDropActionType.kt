@@ -1,6 +1,5 @@
 package com.github.quiltservertools.ledger.actions
 
-import com.github.quiltservertools.ledger.utility.NbtUtils
 import com.github.quiltservertools.ledger.utility.TextColorPallet
 import com.github.quiltservertools.ledger.utility.UUID
 import com.github.quiltservertools.ledger.utility.getWorld
@@ -10,9 +9,11 @@ import net.minecraft.entity.EntityType
 import net.minecraft.entity.ItemEntity
 import net.minecraft.item.AliasedBlockItem
 import net.minecraft.item.BlockItem
+import net.minecraft.item.ItemStack
 import net.minecraft.nbt.StringNbtReader
 import net.minecraft.registry.Registries
 import net.minecraft.server.MinecraftServer
+import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.HoverEvent
 import net.minecraft.text.Text
 import net.minecraft.util.Util
@@ -29,19 +30,21 @@ open class ItemDropActionType : AbstractActionType() {
         }
     }
 
-    override fun getObjectMessage(): Text {
-        val stack = NbtUtils.itemFromProperties(extraData, objectIdentifier)
+    override fun getObjectMessage(source: ServerCommandSource): Text {
+        val stack = ItemStack.fromNbtOrEmpty(source.registryManager, StringNbtReader.parse(extraData))
 
         return "${stack.count} ".literal().append(
             Text.translatable(
                 Util.createTranslationKey(
-                    getTranslationType(), objectIdentifier
+                    getTranslationType(),
+                    objectIdentifier
                 )
             )
         ).setStyle(TextColorPallet.secondaryVariant).styled {
             it.withHoverEvent(
                 HoverEvent(
-                    HoverEvent.Action.SHOW_ITEM, HoverEvent.ItemStackContent(stack)
+                    HoverEvent.Action.SHOW_ITEM,
+                    HoverEvent.ItemStackContent(stack)
                 )
             )
         }
